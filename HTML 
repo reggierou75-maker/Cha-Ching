@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom Game Room - Online Portal</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --panel-bg: #1e293b;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #22c55e;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; }
+
+    header { background-color: var(--panel-bg); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+    .logo-area { display: flex; align-items: center; gap: 0.75rem; font-weight: bold; font-size: 1.25rem; color: #fff; }
+    .nav-tabs button { background: none; border: 1px solid #475569; color: var(--text-main); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .nav-tabs button.active { background-color: var(--accent); border-color: var(--accent); }
+
+    main { flex: 1; padding: 2rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* Player View */
+    .games-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+    .game-card { background: var(--panel-bg); border-radius: 10px; padding: 1.25rem; border: 1px solid #334155; display: flex; flex-direction: column; justify-content: space-between; gap: 1rem; }
+    .game-title { font-size: 1.1rem; font-weight: 600; }
+    .game-status { font-size: 0.85rem; padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block; width: fit-content; }
+    .status-active { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .status-disabled { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .play-btn { background: var(--accent); color: white; border: none; padding: 0.6rem; border-radius: 6px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+    .play-btn:disabled { background: #475569; cursor: not-allowed; }
+
+    /* Admin View */
+    .admin-panel { background: var(--panel-bg); border-radius: 10px; padding: 1.5rem; border: 1px solid #334155; }
+    .admin-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .admin-table th, .admin-table td { text-align: left; padding: 0.75rem 1rem; border-bottom: 1px solid #334155; }
+    .admin-table th { background: #0f172a; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; }
+    .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; transition: .3s; border-radius: 24px; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--success); }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-box { background: #0f172a; padding: 1rem; border-radius: 8px; border: 1px solid #334155; }
+    .stat-val { font-size: 1.5rem; font-weight: bold; color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-area">
+      <span>🎰 Game Room Suite</span>
+    </div>
+    <div class="nav-tabs">
+      <button id="tab-player" class="active" onclick="switchTab('player')">Player Lobby</button>
+      <button id="tab-admin" onclick="switchTab('admin')">Admin Panel</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- PLAYER LOBBY -->
+    <section id="sec-player" class="section active">
+      <h2>Available Games</h2>
+      <p style="color: var(--text-muted); margin-top: 0.25rem;">Select a game below to start playing or download the application client.</p>
+      <div class="games-grid" id="player-games-grid"></div>
+    </section>
+
+    <!-- ADMIN PANEL -->
+    <section id="sec-admin" class="section">
+      <div class="admin-panel">
+        <h2>System Administration</h2>
+        <div class="stat-row" style="margin-top: 1rem;">
+          <div class="stat-box">
+            <div>Active Games</div>
+            <div class="stat-val" id="stat-active-count">0</div>
+          </div>
+          <div class="stat-box">
+            <div>Online Players</div>
+            <div class="stat-val">12</div>
+          </div>
+          <div class="stat-box">
+            <div>System Status</div>
+            <div class="stat-val" style="color: var(--success);">Operational</div>
+          </div>
+        </div>
+
+        <h3 style="margin-top: 1.5rem;">Game Room Catalog Controls</h3>
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Game Name</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="admin-game-list"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // System Game Catalog Data
+    let games = [
+      { id: 1, name: "Hexa Keno Gold", category: "Keno / Numbers", enabled: true, url: "#" },
+      { id: 2, name: "Classic Scrabble Deluxe", category: "Board Games", enabled: true, url: "#" },
+      { id: 3, name: "Strategic Risk Arena", category: "Strategy", enabled: false, url: "#" },
+      { id: 4, name: "Speed Catch Phrase", category: "Party / Trivia", enabled: true, url: "#" },
+      { id: 5, name: "Millennium Monopoly", category: "Board Games", enabled: false, url: "#" }
+    ];
+
+    function switchTab(tab) {
+      document.getElementById('tab-player').classList.toggle('active', tab === 'player');
+      document.getElementById('tab-admin').classList.toggle('active', tab === 'admin');
+      document.getElementById('sec-player').classList.toggle('active', tab === 'player');
+      document.getElementById('sec-admin').classList.toggle('active', tab === 'admin');
+      render();
+    }
+
+    function toggleGame(id) {
+      const g = games.find(item => item.id === id);
+      if (g) {
+        g.enabled = !g.enabled;
+        render();
+      }
+    }
+
+    function render() {
+      // Render Player Lobby
+      const playerGrid = document.getElementById('player-games-grid');
+      playerGrid.innerHTML = '';
+      games.forEach(g => {
+        playerGrid.innerHTML += `
+          <div class="game-card">
+            <div>
+              <div class="game-title">${g.name}</div>
+              <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">${g.category}</div>
+            </div>
+            <div>
+              <span class="game-status ${g.enabled ? 'status-active' : 'status-disabled'}">
+                ${g.enabled ? '● Online' : '○ Offline'}
+              </span>
+            </div>
+            <button class="play-btn" ${!g.enabled ? 'disabled' : ''} onclick="alert('Launching ${g.name}...')">
+              ${g.enabled ? 'Play / Launch App' : 'Temporarily Unavailable'}
+            </button>
+          </div>
+        `;
+      });
+
+      // Render Admin Panel
+      const adminList = document.getElementById('admin-game-list');
+      adminList.innerHTML = '';
+      let activeCount = 0;
+
+      games.forEach(g => {
+        if (g.enabled) activeCount++;
+        adminList.innerHTML += `
+          <tr>
+            <td><strong>${g.name}</strong></td>
+            <td>${g.category}</td>
+            <td>
+              <span style="color: ${g.enabled ? 'var(--success)' : 'var(--danger)'}">
+                ${g.enabled ? 'Active' : 'Disabled'}
+              </span>
+            </td>
+            <td>
+              <label class="toggle-switch">
+                <input type="checkbox" ${g.enabled ? 'checked' : ''} onchange="toggleGame(${g.id})">
+                <span class="slider"></span>
+              </label>
+            </td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('stat-active-count').innerText = activeCount;
+    }
+
+    // Initial render
+    render();
+  </script>
+</bo<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom Game Room - Online Portal</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --panel-bg: #1e293b;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #22c55e;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; }
+
+    header { background-color: var(--panel-bg); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+    .logo-area { display: flex; align-items: center; gap: 0.75rem; font-weight: bold; font-size: 1.25rem; color: #fff; }
+    .nav-tabs button { background: none; border: 1px solid #475569; color: var(--text-main); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .nav-tabs button.active { background-color: var(--accent); border-color: var(--accent); }
+
+    main { flex: 1; padding: 2rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* Player View */
+    .games-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+    .game-card { background: var(--panel-bg); border-radius: 10px; padding: 1.25rem; border: 1px solid #334155; display: flex; flex-direction: column; justify-content: space-between; gap: 1rem; }
+    .game-title { font-size: 1.1rem; font-weight: 600; }
+    .game-status { font-size: 0.85rem; padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block; width: fit-content; }
+    .status-active { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .status-disabled { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .play-btn { background: var(--accent); color: white; border: none; padding: 0.6rem; border-radius: 6px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+    .play-btn:disabled { background: #475569; cursor: not-allowed; }
+
+    /* Admin View */
+    .admin-panel { background: var(--panel-bg); border-radius: 10px; padding: 1.5rem; border: 1px solid #334155; }
+    .admin-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .admin-table th, .admin-table td { text-align: left; padding: 0.75rem 1rem; border-bottom: 1px solid #334155; }
+    .admin-table th { background: #0f172a; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; }
+    .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; transition: .3s; border-radius: 24px; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--success); }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-box { background: #0f172a; padding: 1rem; border-radius: 8px; border: 1px solid #334155; }
+    .stat-val { font-size: 1.5rem; font-weight: bold; color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-area">
+      <span>🎰 Game Room Suite</span>
+    </div>
+    <div class="nav-tabs">
+      <button id="tab-player" class="active" onclick="switchTab('player')">Player Lobby</button>
+      <button id="tab-admin" onclick="switchTab('admin')">Admin Panel</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- PLAYER LOBBY -->
+    <section id="sec-player" class="section active">
+      <h2>Available Games</h2>
+      <p style="color: var(--text-muted); margin-top: 0.25rem;">Select a game below to start playing or download the application client.</p>
+      <div class="games-grid" id="player-games-grid"></div>
+    </section>
+
+    <!-- ADMIN PANEL -->
+    <section id="sec-admin" class="section">
+      <div class="admin-panel">
+        <h2>System Administration</h2>
+        <div class="stat-row" style="margin-top: 1rem;">
+          <div class="stat-box">
+            <div>Active Games</div>
+            <div class="stat-val" id="stat-active-count">0</div>
+          </div>
+          <div class="stat-box">
+            <div>Online Players</div>
+            <div class="stat-val">12</div>
+          </div>
+          <div class="stat-box">
+            <div>System Status</div>
+            <div class="stat-val" style="color: var(--success);">Operational</div>
+          </div>
+        </div>
+
+        <h3 style="margin-top: 1.5rem;">Game Room Catalog Controls</h3>
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Game Name</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="admin-game-list"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // System Game Catalog Data
+    let games = [
+      { id: 1, name: "Hexa Keno Gold", category: "Keno / Numbers", enabled: true, url: "#" },
+      { id: 2, name: "Classic Scrabble Deluxe", category: "Board Games", enabled: true, url: "#" },
+      { id: 3, name: "Strategic Risk Arena", category: "Strategy", enabled: false, url: "#" },
+      { id: 4, name: "Speed Catch Phrase", category: "Party / Trivia", enabled: true, url: "#" },
+      { id: 5, name: "Millennium Monopoly", category: "Board Games", enabled: false, url: "#" }
+    ];
+
+    function switchTab(tab) {
+      document.getElementById('tab-player').classList.toggle('active', tab === 'player');
+      document.getElementById('tab-admin').classList.toggle('active', tab === 'admin');
+      document.getElementById('sec-player').classList.toggle('active', tab === 'player');
+      document.getElementById('sec-admin').classList.toggle('active', tab === 'admin');
+      render();
+    }
+
+    function toggleGame(id) {
+      const g = games.find(item => item.id === id);
+      if (g) {
+        g.enabled = !g.enabled;
+        render();
+      }
+    }
+
+    function render() {
+      // Render Player Lobby
+      const playerGrid = document.getElementById('player-games-grid');
+      playerGrid.innerHTML = '';
+      games.forEach(g => {
+        playerGrid.innerHTML += `
+          <div class="game-card">
+            <div>
+              <div class="game-title">${g.name}</div>
+              <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">${g.category}</div>
+            </div>
+            <div>
+              <span class="game-status ${g.enabled ? 'status-active' : 'status-disabled'}">
+                ${g.enabled ? '● Online' : '○ Offline'}
+              </span>
+            </div>
+            <button class="play-btn" ${!g.enabled ? 'disabled' : ''} onclick="alert('Launching ${g.name}...')">
+              ${g.enabled ? 'Play / Launch App' : 'Temporarily Unavailable'}
+            </button>
+          </div>
+        `;
+      });
+
+      // Render Admin Panel
+      const adminList = document.getElementById('admin-game-list');
+      adminList.innerHTML = '';
+      let activeCount = 0;
+
+      games.forEach(g => {
+        if (g.enabled) activeCount++;
+        adminList.innerHTML += `
+          <tr>
+            <td><strong>${g.name}</strong></td>
+            <td>${g.category}</td>
+            <td>
+              <span style="color: ${g.enabled ? 'var(--success)' : 'var(--danger)'}">
+                ${g.enabled ? 'Active' : 'Disabled'}
+              </span>
+            </td>
+            <td>
+              <label class="toggle-switch">
+                <input type="checkbox" ${g.enabled ? 'checked' : ''} onchange="toggleGame(${g.id})">
+                <span class="slider"></span>
+              </label>
+            </td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('stat-active-count').innerText = activeCount;
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom Game Room - Online Portal</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --panel-bg: #1e293b;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #22c55e;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; }
+
+    header { background-color: var(--panel-bg); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+    .logo-area { display: flex; align-items: center; gap: 0.75rem; font-weight: bold; font-size: 1.25rem; color: #fff; }
+    .nav-tabs button { background: none; border: 1px solid #475569; color: var(--text-main); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .nav-tabs button.active { background-color: var(--accent); border-color: var(--accent); }
+
+    main { flex: 1; padding: 2rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* Player View */
+    .games-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+    .game-card { background: var(--panel-bg); border-radius: 10px; padding: 1.25rem; border: 1px solid #334155; display: flex; flex-direction: column; justify-content: space-between; gap: 1rem; }
+    .game-title { font-size: 1.1rem; font-weight: 600; }
+    .game-status { font-size: 0.85rem; padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block; width: fit-content; }
+    .status-active { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .status-disabled { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .play-btn { background: var(--accent); color: white; border: none; padding: 0.6rem; border-radius: 6px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+    .play-btn:disabled { background: #475569; cursor: not-allowed; }
+
+    /* Admin View */
+    .admin-panel { background: var(--panel-bg); border-radius: 10px; padding: 1.5rem; border: 1px solid #334155; }
+    .admin-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .admin-table th, .admin-table td { text-align: left; padding: 0.75rem 1rem; border-bottom: 1px solid #334155; }
+    .admin-table th { background: #0f172a; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; }
+    .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; g.name
